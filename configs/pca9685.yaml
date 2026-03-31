@@ -1,0 +1,20 @@
+i2c_bus: ""
+address: "0x40"
+frequency_hz: 50
+oe_mode: "grounded"
+servo_power_source: "external_5v"
+test_channel: 0
+
+pulse_us:
+  center: 1500
+  left: 1300
+  right: 1700
+  min_safe: 1000
+  max_safe: 2000
+
+wiring:
+  header: "40-pin GPIO"
+  board_3v3_pin: 1
+  board_sda_pin: 3
+  board_scl_pin: 5
+  board_gnd_pin: 6

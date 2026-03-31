@@ -1,0 +1,33 @@
+sensor_entity: "m03_b_ov13855 3-0036"
+media_cif: "/dev/media1"
+media_isp: "/dev/media3"
+sample_dir: "samples/ov13855"
+stable_test_frames: 300
+
+profiles:
+  preview:
+    video_node: "/dev/video23"
+    width: 1920
+    height: 1080
+    pixfmt: "NV12"
+    fps: 30
+    stream_skip: 10
+  raw_debug:
+    video_node: "/dev/video1"
+    width: 4224
+    height: 3136
+    pixfmt: "BG10"
+    stream_skip: 5
+
+camera_controls:
+  ae: "auto"
+  awb: "auto"
+  gain: "record_only"
+  exposure: "record_only"
+
+known_non_blocking_logs:
+  - "rkcif-mipi-lvds2: get remote terminal sensor failed -19"
+  - "rkisp-vir1: Not active sensor"
+
+known_warnings:
+  - "rkcif-mipi-lvds: Warning: vblank need >= 1000us if isp work in online, cur 808 us"
