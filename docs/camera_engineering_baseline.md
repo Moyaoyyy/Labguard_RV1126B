@@ -2,14 +2,15 @@
 
 ## 1. 目标
 
-将 OV13855 从 Phase 1 bring-up 状态收敛为 Phase 2A 可重复执行的工程基线。
+Phase 2A 的目标从“主相机工程化”收敛为“主相机可用数据基线”。
 
-本阶段不新增样张采集任务，不做人为图像风格调参，只冻结传输与工作分辨率基线。
+当前不是做正式数据集建设，而是把 OV13855 从“能出图”推进到“能稳定、可重复、带元数据地为后续视觉任务供数”。
 
-## 2. 默认工作档
+## 2. 当前默认基线
 
-### 2.1 preview
+### 2.1 主工作档
 
+- `main_profile=preview`
 - `video_node=/dev/video23`
 - `width=1920`
 - `height=1080`
@@ -17,14 +18,11 @@
 - `fps=30`
 - `stream_skip=10`
 
-选择原因:
+该档位继续作为默认起点，只有在更高分辨率候选同时满足“细节更好、300 帧无异常、处理成本可接受”时才替换。
 
-- `/dev/video23` 是已验证通过的 ISP 主输出节点
-- `1920x1080 NV12` 带宽、调试便利性和后续视觉处理成本更平衡
-- 该组合已经通过真实取流和短时间稳定性验证
+### 2.2 Raw 调试档
 
-### 2.2 raw_debug
-
+- `profile=raw_debug`
 - `video_node=/dev/video1`
 - `width=4224`
 - `height=3136`
@@ -33,36 +31,32 @@
 保留原因:
 
 - 用于 raw 链路核查
-- 用于排查 ISP 路径与 sensor/CIF 路径的分界问题
-- 不作为日常运行分辨率
+- 用于 ISP 路径与 sensor/CIF 路径的分界排查
+- 不作为下游默认输入档
 
-## 3. 相机控制策略
+### 2.3 固定安装与验证抓图
 
-本阶段策略是“冻结传输基线，不做图像风格调参”。
+- `mount_id=workbench_main_v1`
+- `status=fixed`
+- `orientation=landscape`
+- `height_mm/tilt_deg/work_distance_mm=pending_measurement`
+- `validation_root=samples/ov13855/validation`
+- `manifest=samples/ov13855/validation/manifest.jsonl`
 
-- `ae=auto`
-- `awb=auto`
-- `gain=record_only`
-- `exposure=record_only`
+说明:
 
-原因:
+- 任何安装形态变化都视为使当前调参结论失效
+- 允许少量验证性抓图，不做正式数据集采集
 
-- 当前没有稳定目标物与样张采集任务
-- 当前优先保证工程链路稳定，而不是图像参数优化
+### 2.4 Presets
 
-## 4. 已知风险
+- `auto_baseline`: 自动模式参考档，允许等价于 no-op
+- `workbench_balanced`: 固定工位主候选 preset
+- `workbench_lowlight`: 实验 preset，默认禁用，待低照度验证再启用
 
-- `rkcif-mipi-lvds: Warning: vblank need >= 1000us if isp work in online, cur 808 us`
+## 3. 统一脚本入口
 
-当前处理:
-
-- 记录为已知 warning
-- Phase 2A 不修改驱动或 sensor 时序
-- 若后续长稳、曝光或掉帧异常出现，再单独分析
-
-## 5. 工程化脚本
-
-使用 `scripts/camera_capture.sh` 管理主相机工程基线。
+使用 `scripts/camera_capture.sh` 管理主相机信息查询、控制项摸底、preset 应用与验证抓图。
 
 支持子命令:
 
@@ -70,19 +64,53 @@
 - `preview`
 - `oneshot`
 - `stress`
+- `controls`
+- `apply-preset`
+- `baseline-shot`
+- `baseline-series`
 
 示例:
 
 ```bash
 bash scripts/camera_capture.sh info preview
-bash scripts/camera_capture.sh preview preview /dev/null 300
-bash scripts/camera_capture.sh oneshot preview
-bash scripts/camera_capture.sh stress preview frames 9000
+bash scripts/camera_capture.sh controls preview
+bash scripts/camera_capture.sh apply-preset preview workbench_balanced
+bash scripts/camera_capture.sh baseline-shot preview empty_workbench auto_baseline
+bash scripts/camera_capture.sh baseline-series preview bright_object workbench_balanced 3
+bash scripts/camera_capture.sh stress preview seconds 300
 ```
 
-## 6. 当前边界
+## 4. Sidecar 与 manifest
 
-- 不做新样张采集计划
-- 不做数据集整理
-- 不做自动曝光/白平衡风格固化
-- 不做目标检测或坐标输出实现
+每次 `baseline-shot` 或 `baseline-series` 都会生成:
+
+- 原始验证图 `*.yuv` 或 `*.raw`
+- 可选预览图 `*.jpg`
+- sidecar JSON `*.json`
+- 汇总 manifest `manifest.jsonl`
+
+固定字段:
+
+- `capture_type`
+- `scene_tag`
+- `profile`
+- `preset`
+- `video_node`
+- `width`
+- `height`
+- `pixfmt`
+- `fps`
+- `timestamp`
+- `mount_id`
+- `output_path`
+- `preview_path`
+- `requested_controls`
+- `controls_log_path`
+
+## 5. 当前边界
+
+- 不做正式数据集采集与样本整理
+- 不做 XW500 接入
+- 不做检测训练、抓取定位或真实抓取联动
+- 不修改驱动或 sensor 时序
+- 不把实验 preset 暴露为下游正式依赖

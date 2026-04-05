@@ -1,0 +1,8 @@
+logs/*.log
+logs/dmesg_*.log
+
+samples/ov13855/*.jpg
+samples/ov13855/*.raw
+samples/ov13855/*.yuv
+samples/ov13855/validation/*
+!samples/ov13855/validation/README.md

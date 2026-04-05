@@ -3,6 +3,22 @@ media_cif: "/dev/media1"
 media_isp: "/dev/media3"
 sample_dir: "samples/ov13855"
 stable_test_frames: 300
+main_profile: "preview"
+
+mount_baseline:
+  mount_id: "workbench_main_v1"
+  status: "fixed"
+  orientation: "landscape"
+  height_mm: "pending_measurement"
+  tilt_deg: "pending_measurement"
+  work_distance_mm: "pending_measurement"
+  coverage_note: "Fixed-workbench baseline. Any mount change invalidates current tuning results."
+
+validation_capture:
+  root_dir: "samples/ov13855/validation"
+  default_scene_tag: "empty_workbench"
+  export_jpg: true
+  manifest_path: "samples/ov13855/validation/manifest.jsonl"
 
 profiles:
   preview:
@@ -19,11 +35,22 @@ profiles:
     pixfmt: "BG10"
     stream_skip: 5
 
-camera_controls:
-  ae: "auto"
-  awb: "auto"
-  gain: "record_only"
-  exposure: "record_only"
+presets:
+  auto_baseline:
+    enabled: true
+    description: "Reference preset. Keep driver defaults until control survey is completed."
+    disabled_reason: ""
+    controls:
+  workbench_balanced:
+    enabled: true
+    description: "Primary candidate preset for the fixed workbench scene."
+    disabled_reason: ""
+    controls:
+  workbench_lowlight:
+    enabled: false
+    description: "Experimental low-light preset."
+    disabled_reason: "Enable only after low-light validation shows clear benefit."
+    controls:
 
 known_non_blocking_logs:
   - "rkcif-mipi-lvds2: get remote terminal sensor failed -19"
