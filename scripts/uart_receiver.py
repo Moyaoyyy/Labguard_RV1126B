@@ -1,9 +1,13 @@
-import serial
 import threading
 import time
 import sys
 import json
 import os
+
+try:
+    import serial
+except ImportError:
+    serial = None
 
 class UartReceiver:
     """串口接收器 - 解析cx, cy，cz坐标"""
@@ -23,6 +27,11 @@ class UartReceiver:
         
     def init_serial(self):
         """初始化串口"""
+        if serial is None:
+            print("✗ 串口初始化失败: 缺少 pyserial 模块")
+            print("  请安装: pip install pyserial")
+            return False
+
         try:
             self.serial_port = serial.Serial(
                 port=self.port,
@@ -51,6 +60,9 @@ class UartReceiver:
             cz=data.get('cz')
             
             if cx is not None and cy is not None and cz is not None:
+                self.cx = cx
+                self.cy = cy
+                self.cz = cz
                 return {'cx': cx, 'cy': cy ,'cz':cz }
             else:
                 print(f"  警告: JSON中缺少cx或cy字段或cz字段")
@@ -136,9 +148,9 @@ class UartReceiver:
             self.serial_port.close()
         print("\n串口已关闭")
 
-def get_coord(self):
-"""        获取最新的坐标       """
-return (self.cx,self.cy,self.cz)
+    def get_coord(self):
+        """获取最新的坐标"""
+        return (self.cx, self.cy, self.cz)
 
 
 
