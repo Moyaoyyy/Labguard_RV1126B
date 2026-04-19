@@ -8,6 +8,7 @@ TMP_DIR="$(mktemp -d)"
 MOCK_BIN="$TMP_DIR/bin"
 TEST_CONFIG="$TMP_DIR/ov13855_test.yaml"
 BAD_CONFIG="$TMP_DIR/ov13855_bad.yaml"
+PENDING_CONFIG="$TMP_DIR/ov13855_pending.yaml"
 LOG_DIR="$TMP_DIR/logs"
 OUT_DIR="$TMP_DIR/samples"
 VALIDATION_ROOT="$TMP_DIR/validation"
@@ -70,6 +71,46 @@ presets:
     disabled_reason: "disabled for test"
     controls:
       brightness: 5
+EOF
+
+cat > "$PENDING_CONFIG" <<'EOF'
+sensor_entity: "mock_ov13855 0-0036"
+media_cif: "/dev/media1"
+media_isp: "/dev/media3"
+sample_dir: "samples/ov13855"
+stable_test_frames: 300
+main_profile: "preview"
+
+mount_baseline:
+  mount_id: "mock_mount_v1"
+  status: "fixed"
+  orientation: "landscape"
+  height_mm: "pending_measurement"
+  tilt_deg: "pending_measurement"
+  work_distance_mm: "pending_measurement"
+  coverage_note: "Fixed-workbench baseline. Any mount change invalidates current tuning results."
+
+validation_capture:
+  root_dir: "samples/ov13855/validation"
+  default_scene_tag: "empty_workbench"
+  export_jpg: true
+  manifest_path: "samples/ov13855/validation/manifest.jsonl"
+
+profiles:
+  preview:
+    video_node: "/dev/video23"
+    width: 1920
+    height: 1080
+    pixfmt: "NV12"
+    fps: 30
+    stream_skip: 10
+
+presets:
+  auto_baseline:
+    enabled: true
+    description: "auto"
+    disabled_reason: ""
+    controls:
 EOF
 
 cat > "$BAD_CONFIG" <<'EOF'
@@ -220,6 +261,24 @@ export MOCK_SET_CTRL_LOG="$TMP_DIR/set_ctrl.log"
 CONFIG_FILE="$TEST_CONFIG" LOG_DIR="$LOG_DIR" OUT_DIR="$OUT_DIR" VALIDATION_ROOT="$VALIDATION_ROOT" MANIFEST_PATH="$MANIFEST_PATH" \
   bash "$REPO_ROOT/scripts/camera_capture.sh" info preview > "$TMP_DIR/info.out"
 assert_grep "main_profile: preview" "$TMP_DIR/info.out"
+assert_grep "phase2a_mount_gate: ready" "$TMP_DIR/info.out"
+
+CONFIG_FILE="$PENDING_CONFIG" LOG_DIR="$LOG_DIR" OUT_DIR="$OUT_DIR" VALIDATION_ROOT="$VALIDATION_ROOT" MANIFEST_PATH="$MANIFEST_PATH" \
+  bash "$REPO_ROOT/scripts/camera_capture.sh" info preview > "$TMP_DIR/pending_info.out"
+assert_grep "phase2a_mount_gate: blocked" "$TMP_DIR/pending_info.out"
+assert_grep "mount_baseline.height_mm is unresolved" "$TMP_DIR/pending_info.out"
+
+if CONFIG_FILE="$PENDING_CONFIG" LOG_DIR="$LOG_DIR" OUT_DIR="$OUT_DIR" VALIDATION_ROOT="$VALIDATION_ROOT" MANIFEST_PATH="$MANIFEST_PATH" \
+  bash "$REPO_ROOT/scripts/camera_capture.sh" controls preview > "$TMP_DIR/pending_controls.out" 2>&1; then
+  echo "[FAIL] controls should fail when mount baseline is unresolved"
+  exit 1
+fi
+
+if CONFIG_FILE="$PENDING_CONFIG" LOG_DIR="$LOG_DIR" OUT_DIR="$OUT_DIR" VALIDATION_ROOT="$VALIDATION_ROOT" MANIFEST_PATH="$MANIFEST_PATH" \
+  bash "$REPO_ROOT/scripts/camera_capture.sh" stress preview seconds 300 > "$TMP_DIR/pending_stress.out" 2>&1; then
+  echo "[FAIL] stress should fail when mount baseline is unresolved"
+  exit 1
+fi
 
 CONFIG_FILE="$TEST_CONFIG" LOG_DIR="$LOG_DIR" OUT_DIR="$OUT_DIR" VALIDATION_ROOT="$VALIDATION_ROOT" MANIFEST_PATH="$MANIFEST_PATH" \
   bash "$REPO_ROOT/scripts/camera_capture.sh" controls preview > "$TMP_DIR/controls.out"

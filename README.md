@@ -39,22 +39,37 @@
   - `width=4224`
   - `height=3136`
   - `pixfmt=BG10`
-- 固定安装基线已进入配置
+- 固定安装基线已进入配置，但尚未冻结
   - `mount_id=workbench_main_v1`
   - `status=fixed`
   - `orientation=landscape`
-  - `height_mm/tilt_deg/work_distance_mm=pending_measurement`
+  - `height_mm=420`
+  - `tilt_deg=25`
+  - `work_distance_mm=510`
+  - `coverage_note=Center ROI fully visible. Left/right edges and all four corners remain inside frame. Planned grab ROI is fully covered with small margin.`
+  - 当前值仅作为本轮板端会话的测试值，后续仍需现场复测确认
 - 验证抓图目录
   - `samples/ov13855/validation`
   - `manifest=samples/ov13855/validation/manifest.jsonl`
-- 当前 presets
-  - `auto_baseline`: 自动模式参考档
-  - `workbench_balanced`: 固定工位主候选 preset
+- 当前 preset 状态
+  - `auto_baseline`: 当前默认推荐 preset
+  - `workbench_balanced`: 候选 preset，但 `controls` 仍为空，等待真实 survey 结果
   - `workbench_lowlight`: 实验 preset，默认禁用
 - 当前分辨率决策规则
   - 先以 `1920x1080 NV12 @ 30fps` 为基线
   - 再从 ISP 主输出中选 1 个更高分辨率候选做对比
   - 只有当候选同时满足“细节更好 + 300 帧无异常 + 成本可接受”时才替换主档
+- 当前仓库结论
+  - `preview` 仍是唯一冻结的主工作档
+  - `2026-04-19` 已完成 1 轮板端 `auto_baseline` 取证会话
+  - `oneshot`、`300` 帧短压测、`300` 秒长压测均通过
+  - `6` 个验证场景已各完成 `3` 张抓图，当前 `manifest.jsonl=18`
+  - `/dev/video23` 的 controls survey 仅暴露只读 `pixel_rate`，当前未发现可冻结的有效 control
+  - 当前推荐 preset 仍为 `auto_baseline`，`workbench_balanced.controls` 继续保持空
+  - 更高分辨率候选尚未在板端完成正式对比，因此 Phase 2A 仍未关闭
+- 执行环境约束
+  - `controls` / `apply-preset` / `baseline-shot` / `baseline-series` / `stress` 必须在 RV1126B 板端执行
+  - 通过 Fedora + `sshfs` 挂载仓库只能编辑文件和查看产物，不能替代板端 `v4l2` / ISP 验证
 
 ### Phase 2A 出口条件
 
@@ -94,11 +109,13 @@ labguard_rv1126b/
 ├─ scripts/
 │  ├─ check_camera.sh
 │  ├─ camera_capture.sh
+│  ├─ run_phase2a_auto_baseline_session.sh
 │  ├─ pca9685_probe.sh
 │  └─ minimal_linkage_stub.sh
 ├─ tests/
 │  ├─ test_ov13855.sh
 │  ├─ test_camera_capture_mock.sh
+│  ├─ test_phase2a_auto_baseline_session_mock.sh
 │  └─ test_pca9685.sh
 ├─ samples/
 │  └─ ov13855/
@@ -117,9 +134,11 @@ labguard_rv1126b/
 - `configs/ov13855.yaml`: 主相机基线配置
 - `configs/pca9685.yaml`: PCA9685 默认 bring-up 配置
 - `scripts/camera_capture.sh`: 主相机统一采集与验证脚本
+- `scripts/run_phase2a_auto_baseline_session.sh`: Phase 2A 单次板端 `auto_baseline` 会话编排脚本
 - `scripts/pca9685_probe.sh`: PCA9685 I2C 探测脚本
 - `tests/test_ov13855.sh`: 主相机 smoke test
 - `tests/test_camera_capture_mock.sh`: 主相机脚本 mock 回归测试
+- `tests/test_phase2a_auto_baseline_session_mock.sh`: Phase 2A 会话编排脚本 mock 回归测试
 - `tests/test_pca9685.sh`: 单舵机保守动作测试
 
 ## 当前排除项

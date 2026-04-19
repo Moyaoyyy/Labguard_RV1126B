@@ -275,6 +275,87 @@ load_profile() {
   fi
 }
 
+mount_value_pending() {
+  case "${1:-}" in
+    ""|pending|pending_measurement|todo|tbd|unknown)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+mount_coverage_note_unresolved() {
+  case "${MOUNT_COVERAGE_NOTE:-}" in
+    ""|"Fixed-workbench baseline. Any mount change invalidates current tuning results.")
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+mount_baseline_ready() {
+  if mount_value_pending "${MOUNT_HEIGHT_MM:-}"; then
+    return 1
+  fi
+  if mount_value_pending "${MOUNT_TILT_DEG:-}"; then
+    return 1
+  fi
+  if mount_value_pending "${MOUNT_WORK_DISTANCE_MM:-}"; then
+    return 1
+  fi
+  if mount_coverage_note_unresolved; then
+    return 1
+  fi
+  return 0
+}
+
+report_mount_gate() {
+  if mount_baseline_ready; then
+    echo "phase2a_mount_gate: ready"
+    return 0
+  fi
+
+  echo "phase2a_mount_gate: blocked"
+  if mount_value_pending "${MOUNT_HEIGHT_MM:-}"; then
+    echo "[WARN] mount_baseline.height_mm is unresolved."
+  fi
+  if mount_value_pending "${MOUNT_TILT_DEG:-}"; then
+    echo "[WARN] mount_baseline.tilt_deg is unresolved."
+  fi
+  if mount_value_pending "${MOUNT_WORK_DISTANCE_MM:-}"; then
+    echo "[WARN] mount_baseline.work_distance_mm is unresolved."
+  fi
+  if mount_coverage_note_unresolved; then
+    echo "[WARN] mount_baseline.coverage_note is still generic. Record center coverage, edge coverage, and future grab ROI."
+  fi
+}
+
+require_mount_baseline_ready() {
+  if mount_baseline_ready; then
+    return 0
+  fi
+
+  echo "[ERROR] Phase 2A mount baseline is not frozen."
+  echo "Resolve these fields in configs/ov13855.yaml before running controls/apply-preset/baseline capture/stress:"
+  if mount_value_pending "${MOUNT_HEIGHT_MM:-}"; then
+    echo "  - mount_baseline.height_mm"
+  fi
+  if mount_value_pending "${MOUNT_TILT_DEG:-}"; then
+    echo "  - mount_baseline.tilt_deg"
+  fi
+  if mount_value_pending "${MOUNT_WORK_DISTANCE_MM:-}"; then
+    echo "  - mount_baseline.work_distance_mm"
+  fi
+  if mount_coverage_note_unresolved; then
+    echo "  - mount_baseline.coverage_note"
+  fi
+  exit 1
+}
+
 default_capture_path() {
   local ext
   ext="$(printf '%s' "$PIXFMT" | tr '[:upper:]' '[:lower:]')"
@@ -568,6 +649,7 @@ command_info() {
   echo "tilt_deg: $MOUNT_TILT_DEG"
   echo "work_distance_mm: $MOUNT_WORK_DISTANCE_MM"
   echo "coverage_note: $MOUNT_COVERAGE_NOTE"
+  report_mount_gate
 
   section "Profile"
   echo "profile: $PROFILE"
@@ -632,6 +714,8 @@ command_stress() {
   local value="${2:-$STABLE_TEST_FRAMES}"
   local frame_count
 
+  require_mount_baseline_ready
+
   case "$mode" in
     frames)
       frame_count="$value"
@@ -653,6 +737,7 @@ command_stress() {
 }
 
 command_controls() {
+  require_mount_baseline_ready
   section "Controls"
   echo "profile: $PROFILE"
   snapshot_controls "survey"
@@ -661,6 +746,7 @@ command_controls() {
 
 command_apply_preset() {
   local preset="${1:-auto_baseline}"
+  require_mount_baseline_ready
   apply_preset "$preset"
   echo "controls_log: $APPLIED_CONTROLS_LOG"
 }

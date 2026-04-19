@@ -9,10 +9,11 @@ mount_baseline:
   mount_id: "workbench_main_v1"
   status: "fixed"
   orientation: "landscape"
-  height_mm: "pending_measurement"
-  tilt_deg: "pending_measurement"
-  work_distance_mm: "pending_measurement"
-  coverage_note: "Fixed-workbench baseline. Any mount change invalidates current tuning results."
+  # Temporary test values for Phase 2A bring-up. Replace with final measured values before freezing the mount baseline.
+  height_mm: "420"
+  tilt_deg: "25"
+  work_distance_mm: "510"
+  coverage_note: "Center ROI fully visible. Left/right edges and all four corners remain inside frame. Planned grab ROI is fully covered with small margin."
 
 validation_capture:
   root_dir: "samples/ov13855/validation"
@@ -38,12 +39,12 @@ profiles:
 presets:
   auto_baseline:
     enabled: true
-    description: "Reference preset. Keep driver defaults until control survey is completed."
+    description: "Current recommended preset. Keep driver defaults until control survey proves stable gains."
     disabled_reason: ""
     controls:
   workbench_balanced:
     enabled: true
-    description: "Primary candidate preset for the fixed workbench scene."
+    description: "Candidate preset for the fixed workbench scene. Keep controls empty until the survey identifies effective controls."
     disabled_reason: ""
     controls:
   workbench_lowlight:
