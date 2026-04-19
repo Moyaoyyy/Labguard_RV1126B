@@ -12,6 +12,24 @@
 
 本阶段只围绕固定工位场景推进，允许少量验证性抓图，但不做正式数据集采集、样本整理或训练任务。
 
+## 进度总览
+
+按当前 `Phase 1 / Phase 2A / Phase 2B / Phase 2C` 里程碑粗估:
+
+- Phase 1: `100%`
+  - OV13855 bring-up、样张保存、`300` 帧短稳验证已完成
+- Phase 2A: `约 80%`
+  - 已完成 1 轮板端 `auto_baseline` 取证会话
+  - 已完成 `oneshot`、`300` 帧短压测、`300` 秒长压测
+  - 已完成 `6` 个场景、`18` 条 `manifest.jsonl`、`18` 个 sidecar
+  - 当前仍缺单一更高分辨率候选正式对比、人工画质观察回填、mount 测试值复测确认
+- Phase 2B: `0%`
+  - PCA9685 尚未与 RV1126B 接通
+- Phase 2C: `0%`
+  - 仅保留最小接口占位，需等待 Phase 2A / 2B 通过后再进入
+
+若按上述四个阶段平均粗估，当前仓库主线总体完成度约为 `45%`。
+
 ## 当前状态
 
 ### Phase 1 已完成
@@ -39,7 +57,7 @@
   - `width=4224`
   - `height=3136`
   - `pixfmt=BG10`
-- 固定安装基线已进入配置，但尚未冻结
+- 固定安装基线已写入测试值，并完成 1 轮 `auto_baseline` 取证
   - `mount_id=workbench_main_v1`
   - `status=fixed`
   - `orientation=landscape`
@@ -109,12 +127,14 @@ labguard_rv1126b/
 ├─ scripts/
 │  ├─ check_camera.sh
 │  ├─ camera_capture.sh
+│  ├─ export_preview_from_raw.py
 │  ├─ run_phase2a_auto_baseline_session.sh
 │  ├─ pca9685_probe.sh
 │  └─ minimal_linkage_stub.sh
 ├─ tests/
 │  ├─ test_ov13855.sh
 │  ├─ test_camera_capture_mock.sh
+│  ├─ test_export_preview_from_raw.sh
 │  ├─ test_phase2a_auto_baseline_session_mock.sh
 │  └─ test_pca9685.sh
 ├─ samples/
@@ -134,10 +154,12 @@ labguard_rv1126b/
 - `configs/ov13855.yaml`: 主相机基线配置
 - `configs/pca9685.yaml`: PCA9685 默认 bring-up 配置
 - `scripts/camera_capture.sh`: 主相机统一采集与验证脚本
+- `scripts/export_preview_from_raw.py`: 从已保存的 `NV12` 原始帧导出 preview，并对板端 blue cast 做预览级校正
 - `scripts/run_phase2a_auto_baseline_session.sh`: Phase 2A 单次板端 `auto_baseline` 会话编排脚本
 - `scripts/pca9685_probe.sh`: PCA9685 I2C 探测脚本
 - `tests/test_ov13855.sh`: 主相机 smoke test
 - `tests/test_camera_capture_mock.sh`: 主相机脚本 mock 回归测试
+- `tests/test_export_preview_from_raw.sh`: preview 导出 helper 回归测试
 - `tests/test_phase2a_auto_baseline_session_mock.sh`: Phase 2A 会话编排脚本 mock 回归测试
 - `tests/test_pca9685.sh`: 单舵机保守动作测试
 

@@ -555,7 +555,9 @@ write_sidecar_json() {
 }
 
 export_preview_jpg() {
-  local preview_path="$1"
+  local source_path="$1"
+  local preview_path="$2"
+  local parser_format parser_fps expected_size helper_script tmp_ppm source_size
 
   GENERATED_PREVIEW_PATH=""
   PREVIEW_SKIP_REASON=""
@@ -570,9 +572,74 @@ export_preview_jpg() {
     return 0
   fi
 
+  if [[ ! -s "$source_path" ]]; then
+    PREVIEW_SKIP_REASON="preview_source_missing"
+    return 0
+  fi
+
+  case "$PIXFMT" in
+    NV12)
+      parser_format="nv12"
+      ;;
+    UYVY)
+      parser_format="uyvy"
+      ;;
+    GREY)
+      parser_format="gray8"
+      ;;
+    *)
+      PREVIEW_SKIP_REASON="preview_export_unsupported_pixfmt_${PIXFMT}"
+      return 0
+      ;;
+  esac
+
+  if [[ "${FPS:-}" =~ ^[0-9]+$ ]] && [[ "${FPS:-0}" -gt 0 ]]; then
+    parser_fps="$FPS"
+  else
+    parser_fps="30"
+  fi
+
+  expected_size=""
+  case "$PIXFMT" in
+    NV12)
+      expected_size=$((WIDTH * HEIGHT * 3 / 2))
+      ;;
+    UYVY)
+      expected_size=$((WIDTH * HEIGHT * 2))
+      ;;
+    GREY)
+      expected_size=$((WIDTH * HEIGHT))
+      ;;
+  esac
+
+  helper_script="$REPO_ROOT/scripts/export_preview_from_raw.py"
+  source_size="$(wc -c < "$source_path")"
+
+  if [[ "$PIXFMT" == "NV12" ]] && [[ -f "$helper_script" ]] && command -v python3 >/dev/null 2>&1 && [[ -n "$expected_size" ]] && [[ "$source_size" -eq "$expected_size" ]]; then
+    if python3 - <<'PY' >/dev/null 2>&1
+import importlib.util
+raise SystemExit(0 if importlib.util.find_spec("numpy") else 1)
+PY
+    then
+      tmp_ppm="$(mktemp "${TMPDIR:-/tmp}/preview_ppm_XXXXXX.ppm")"
+      if python3 "$helper_script" --input "$source_path" --output "$tmp_ppm" --width "$WIDTH" --height "$HEIGHT" --pixfmt "$PIXFMT" &&
+        gst-launch-1.0 -e \
+          filesrc location="$tmp_ppm" ! \
+          pnmdec ! \
+          jpegenc ! \
+          filesink location="$preview_path"; then
+        rm -f "$tmp_ppm"
+        GENERATED_PREVIEW_PATH="$preview_path"
+        return 0
+      fi
+      rm -f "$tmp_ppm"
+    fi
+  fi
+
   if ! gst-launch-1.0 -e \
-    v4l2src device="$VIDEO_NODE" num-buffers=1 io-mode=mmap ! \
-    video/x-raw,format="$PIXFMT",width="$WIDTH",height="$HEIGHT" ! \
+    filesrc location="$source_path" ! \
+    rawvideoparse format="$parser_format" width="$WIDTH" height="$HEIGHT" framerate="$parser_fps"/1 ! \
+    videoconvert ! \
     jpegenc ! \
     filesink location="$preview_path"; then
     PREVIEW_SKIP_REASON="gst_preview_export_failed"
@@ -619,7 +686,7 @@ capture_validation_shot() {
   run_capture "$output_path" 1
   ls -lh "$output_path"
 
-  export_preview_jpg "$preview_path"
+  export_preview_jpg "$output_path" "$preview_path"
   if [[ -n "$GENERATED_PREVIEW_PATH" ]]; then
     preview_record="$GENERATED_PREVIEW_PATH"
     ls -lh "$GENERATED_PREVIEW_PATH"

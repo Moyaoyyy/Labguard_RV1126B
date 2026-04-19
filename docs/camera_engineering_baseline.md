@@ -136,6 +136,19 @@ bash scripts/camera_capture.sh stress preview seconds 300
 - `requested_controls`
 - `controls_log_path`
 
+当前 `preview .jpg` 不再从 `/dev/video23` 重新开流导出，而是从已经保存的原始帧再生成预览图。
+
+这样做的原因:
+
+- 避免 raw / preview 因为二次开流协商出不同格式而失配
+- 允许在导出 preview 时对当前板端 `NV12` 输出里的固定 chroma bias 做预览级修正
+
+当前限制:
+
+- 该修正只作用于 preview `jpg`
+- sidecar / `manifest.jsonl` / 原始 `yuv` 数据不变
+- 根因仍指向板端相机链路 / IQ tuning，后续若完成 ISP 根因修复，应移除这层预览补偿
+
 sidecar 和 `manifest.jsonl` 只记录采集事实；图像质量观察结论、candidate 对比结论和 final recommendation 仍需要同步回文档。
 
 ## 6. 当前边界
